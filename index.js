@@ -8,6 +8,13 @@ const User = require('./models/User')
 
 dotenv.config()
 mongoose.connect(process.env.MONGODB_URI)
+  .then(() => {
+    console.log('Connected to MongoDB')
+  })
+  .catch((error) => {
+    console.error('Error connecting to MongoDB:', error.message)
+  })
+
 const jwtSecret = process.env.JWT_SECRET_KEY
 
 const app = express()
@@ -24,6 +31,11 @@ app.get('/test', (req,res) => {
 
 app.get('/profile', (req, res) => {
   const { token } = req.cookies
+
+  if (!token) {
+    return res.status(401).json({ message: 'Unauthorized - JWT must be provided' })
+  }
+
   jwt.verify(token, jwtSecret, {}, (err, userData) => {
     if (err) throw err
     res.json({userData})
@@ -36,9 +48,9 @@ app.post('/register', async (req, res) => {
   try {
     const user = await User.create({username, password})
 
-    jwt.sign({name: user.username}, jwtSecret, {}, (err, token) => {
+    jwt.sign({username: user.username}, jwtSecret, {}, (err, token) => {
       if (err) throw err
-      res.cookie('token', token).status(201).json({
+      res.cookie('token', token, {sameSite: 'none', secure:true}).status(201).json({
         username: user.username,
       })
     })
