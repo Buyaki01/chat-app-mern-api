@@ -6,6 +6,8 @@ const cookieParser = require('cookie-parser')
 const cors = require('cors')
 const bcrypt = require('bcryptjs')
 const User = require('./models/User')
+const ws = require('ws')
+const PORT = process.env.PORT || 5000
 
 dotenv.config()
 mongoose.connect(process.env.MONGODB_URI)
@@ -85,4 +87,10 @@ app.post('/login', async (req, res) => {
   }
 })
 
-app.listen(5000)
+const server = app.listen(PORT, () => console.log(`Server running on port ${PORT}`))
+
+const wss = new ws.WebSocketServer({server})
+
+wss.on('connection', (connection) => {
+  console.log("Connected wss")
+})
