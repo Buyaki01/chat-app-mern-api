@@ -4,6 +4,7 @@ const dotenv = require('dotenv')
 const jwt = require('jsonwebtoken')
 const cookieParser = require('cookie-parser')
 const cors = require('cors')
+const bcrypt = require('bcryptjs')
 const User = require('./models/User')
 
 dotenv.config()
@@ -16,6 +17,7 @@ mongoose.connect(process.env.MONGODB_URI)
   })
 
 const jwtSecret = process.env.JWT_SECRET_KEY
+const bcryptSalt = bcrypt.genSaltSync(10)
 
 const app = express()
 app.use(express.json())
@@ -46,7 +48,12 @@ app.post('/register', async (req, res) => {
   const { username, password } = req.body
 
   try {
-    const user = await User.create({username, password})
+    const hashedPassword = bcrypt.hashSync(password, bcryptSalt)
+
+    const user = await User.create({
+      username, 
+      password: hashedPassword
+    })
 
     jwt.sign({username: user.username}, jwtSecret, {}, (err, token) => {
       if (err) throw err
@@ -57,6 +64,24 @@ app.post('/register', async (req, res) => {
   } catch (error) {
     if (error) throw error
     res.status(500).json('error')
+  }
+})
+
+app.post('/login', async (req, res) => {
+  const { username, password } = req.body
+  const user = await User.findOne({username})
+
+  if (user) {
+    const passOk = bcrypt.compareSync(password, user.password)
+
+    if (passOk) {
+      jwt.sign({username: user.username}, jwtSecret, {}, (err, token) => {
+        if (err) throw err
+        res.cookie('token', token, {sameSite: 'none', secure:true}).status(201).json({
+          username: user.username,
+        })
+      })
+    }
   }
 })
 
