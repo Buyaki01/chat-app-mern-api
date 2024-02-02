@@ -91,6 +91,21 @@ const server = app.listen(PORT, () => console.log(`Server running on port ${PORT
 
 const wss = new ws.WebSocketServer({server})
 
-wss.on('connection', (connection) => {
-  console.log("Connected wss")
+wss.on('connection', (connection, req) => {
+  const cookies = req.headers.cookie
+
+  if (cookies) {
+    const tokenCookieString = cookies.split(';').find(str => str.startsWith('token=')) //splits the cookies string into an array of individual cookie strings, using semicolons as the delimiter
+    if (tokenCookieString) {
+      const token = tokenCookieString.split('=')[1]
+      if (token) {
+        jwt.verify(token, jwtSecret, {}, (err, userData) => {
+          if (err) throw err
+          const { username } = userData
+          connection.username = username
+          
+        })
+      }
+    }
+  }
 })
